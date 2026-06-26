@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FW-04 Report Generator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+
+  .header { background: #1a1a2e; color: white; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  .header-icon { width: 36px; height: 36px; background: #e74c3c; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: white; flex-shrink: 0; }
+  .header h1 { font-size: 16px; font-weight: 600; }
+  .header p { font-size: 12px; color: #aab; margin-top: 2px; }
+
+  .layout { display: grid; grid-template-columns: 1fr 380px; gap: 0; min-height: calc(100vh - 68px); }
+  .left-panel { padding: 20px; overflow-y: auto; }
+  .right-panel { background: white; border-left: 1px solid #e0e0e0; display: flex; flex-direction: column; }
+
+  .section { background: white; border-radius: 10px; border: 1px solid #e8e8e8; margin-bottom: 16px; overflow: hidden; }
+  .section-header { background: #f8f9fa; border-bottom: 1px solid #e8e8e8; padding: 10px 16px; display: flex; align-items: center; gap: 8px; }
+  .section-header h2 { font-size: 13px; font-weight: 600; color: #444; text-transform: uppercase; letter-spacing: 0.5px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-blue { background: #3498db; }
+  .dot-green { background: #2ecc71; }
+  .dot-red { background: #e74c3c; }
+  .dot-amber { background: #f39c12; }
+  .dot-purple { background: #9b59b6; }
+
+  .section-body { padding: 14px 16px; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+  .form-row.four { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  label { font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; letter-spacing: 0.4px; }
+  input, select, textarea { font-size: 13px; border: 1px solid #ddd; border-radius: 6px; padding: 7px 10px; color: #1a1a2e; background: #fafafa; width: 100%; transition: border-color 0.15s; }
+  input:focus, select:focus { outline: none; border-color: #3498db; background: white; }
+  input[readonly] { background: #f0f2f5; color: #666; }
+
+  .delivery-row { display: grid; grid-template-columns: 80px 90px 80px 70px 32px; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .delivery-row label { display: none; }
+  .cycle-label { font-size: 12px; font-weight: 600; color: #666; padding-top: 8px; }
+  .btn-remove { background: none; border: 1px solid #eee; border-radius: 4px; width: 28px; height: 28px; cursor: pointer; color: #ccc; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .btn-remove:hover { border-color: #e74c3c; color: #e74c3c; }
+  .delivery-header { display: grid; grid-template-columns: 80px 90px 80px 70px 32px; gap: 6px; margin-bottom: 4px; }
+  .delivery-header span { font-size: 10px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.4px; }
+
+  .hourly-row { display: grid; grid-template-columns: 110px 80px 80px; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .hourly-header { display: grid; grid-template-columns: 110px 80px 80px; gap: 8px; margin-bottom: 4px; }
+  .hourly-header span { font-size: 10px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.4px; }
+
+  .progress-bar-wrap { background: #f0f2f5; border-radius: 6px; height: 8px; overflow: hidden; margin: 4px 0; }
+  .progress-bar { height: 100%; border-radius: 6px; transition: width 0.4s; }
+  .progress-bar.green { background: #2ecc71; }
+  .progress-bar.amber { background: #f39c12; }
+  .progress-bar.red { background: #e74c3c; }
+
+  .mini-stat { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f5f5f5; }
+  .mini-stat:last-child { border-bottom: none; }
+  .mini-stat span:first-child { font-size: 12px; color: #666; }
+  .mini-stat span:last-child { font-size: 13px; font-weight: 600; color: #1a1a2e; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .badge-ok { background: #d5f5e3; color: #1e8449; }
+  .badge-warn { background: #fdebd0; color: #935116; }
+  .badge-danger { background: #fadbd8; color: #922b21; }
+
+  .btn-add { background: none; border: 1px dashed #3498db; border-radius: 6px; padding: 6px 12px; color: #3498db; font-size: 12px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 6px; transition: all 0.15s; }
+  .btn-add:hover { background: #ebf5fb; }
+
+  .right-panel .rp-header { padding: 14px 16px; border-bottom: 1px solid #e8e8e8; background: #1a1a2e; color: white; display: flex; justify-content: space-between; align-items: center; }
+  .right-panel .rp-header h3 { font-size: 14px; font-weight: 600; }
+  .btn-generate { background: #2ecc71; color: white; border: none; border-radius: 6px; padding: 7px 14px; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+  .btn-generate:hover { background: #27ae60; }
+
+  .report-preview { flex: 1; padding: 16px; overflow-y: auto; }
+  .report-text { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; background: #f8f9fa; border: 1px solid #e8e8e8; border-radius: 8px; padding: 12px; color: #1a1a2e; min-height: 200px; }
+
+  .rp-actions { padding: 12px 16px; border-top: 1px solid #e8e8e8; display: flex; gap: 8px; }
+  .btn-copy { flex: 1; background: #1a1a2e; color: white; border: none; border-radius: 6px; padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .btn-copy:hover { background: #2c2c54; }
+  .btn-clear { background: none; border: 1px solid #ddd; color: #666; border-radius: 6px; padding: 10px 14px; font-size: 13px; cursor: pointer; }
+  .btn-clear:hover { border-color: #999; color: #333; }
+
+  .live-summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .stat-card { background: white; border: 1px solid #e8e8e8; border-radius: 8px; padding: 10px 12px; text-align: center; }
+  .stat-card .val { font-size: 20px; font-weight: 700; }
+  .stat-card .lbl { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+  .stat-card.green .val { color: #27ae60; }
+  .stat-card.amber .val { color: #e67e22; }
+  .stat-card.red .val { color: #c0392b; }
+
+  .copy-success { color: #27ae60; font-size: 12px; font-weight: 600; display: none; }
+  .copy-success.show { display: inline; }
+
+  .issue-row { display: grid; grid-template-columns: 1fr 80px; gap: 8px; margin-bottom: 8px; align-items: center; }
+  select.status-select { font-size: 12px; }
+
+  .tabs { display: flex; border-bottom: 1px solid #e8e8e8; }
+  .tab { flex: 1; padding: 8px; text-align: center; font-size: 12px; font-weight: 600; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab.active { color: #3498db; border-bottom-color: #3498db; }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    .right-panel { border-left: none; border-top: 1px solid #e0e0e0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">FW</div>
+  <div>
+    <h1>FW-04 Line Report Generator</h1>
+    <p>ATI Production Management — Critical Line Monitoring</p>
+  </div>
+</div>
+
+<div id="saveBar" style="background:#fff;border-bottom:1px solid #e0e0e0;padding:6px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+  <span style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.4px;">💾 Data</span>
+  <button onclick="saveLocal()" style="font-size:12px;padding:4px 12px;border:1px solid #2ecc71;border-radius:5px;background:none;color:#27ae60;cursor:pointer;font-weight:600;">⬆ Simpan</button>
+  <button onclick="exportJSON()" style="font-size:12px;padding:4px 12px;border:1px solid #3498db;border-radius:5px;background:none;color:#2980b9;cursor:pointer;font-weight:600;">📥 Export JSON</button>
+  <label style="font-size:12px;padding:4px 12px;border:1px solid #9b59b6;border-radius:5px;color:#8e44ad;cursor:pointer;font-weight:600;margin:0;">📂 Import JSON<input type="file" accept=".json" onchange="importJSON(event)" style="display:none"></label>
+  <button onclick="newShift()" style="font-size:12px;padding:4px 12px;border:1px solid #e74c3c;border-radius:5px;background:none;color:#c0392b;cursor:pointer;font-weight:600;">🗑 Shift Baru</button>
+  <span id="saveStatus" style="font-size:11px;color:#888;margin-left:4px;"></span>
+  <span id="lastSaved" style="font-size:11px;color:#aaa;margin-left:auto;"></span>
+</div>
+<div class="layout">
+  <div class="left-panel">
+
+    <!-- Live Summary -->
+    <div class="live-summary" id="liveSummary">
+      <div class="stat-card amber">
+        <div class="val" id="summAch">0</div>
+        <div class="lbl">Pcs Dicapai</div>
+      </div>
+      <div class="stat-card" id="cardRate">
+        <div class="val" id="summRate">0.0</div>
+        <div class="lbl">Pcs/Jam</div>
+      </div>
+      <div class="stat-card red">
+        <div class="val" id="summReject">0</div>
+        <div class="lbl">Total Reject</div>
+      </div>
+    </div>
+
+    <!-- Header Info -->
+    <div class="section">
+      <div class="section-header"><div class="dot dot-blue"></div><h2>Info Laporan</h2></div>
+      <div class="section-body">
+        <div class="form-row four">
+          <div class="form-group">
+            <label>Tanggal</label>
+            <input type="date" id="tgl">
+          </div>
+          <div class="form-group">
+            <label>Shift</label>
+            <select id="shift">
+              <option>Shift 1</option>
+              <option>Shift 2</option>
+              <option>Shift 3</option>
+              <option>NSP</option>
+              <option>NSM</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Line</label>
+            <input type="text" id="linename" value="FW-04" placeholder="FW-04">
+          </div>
+          <div class="form-group">
+            <label>Part No</label>
+            <input type="text" id="partno" value="FW D13E" placeholder="FW D13E">
+          </div>
+        </div>
+        <div class="form-row three">
+          <div class="form-group">
+            <label>Target /jam</label>
+            <input type="number" id="target" value="15">
+          </div>
+          <div class="form-group">
+            <label>Operator / PIC</label>
+            <input type="text" id="operator" placeholder="Nama operator">
+          </div>
+          <div class="form-group">
+            <label>Mesin</label>
+            <input type="text" id="mesin" placeholder="e.g. Mesin A">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Kondisi / Catatan Awal</label>
+          <input type="text" id="kondisi" placeholder="e.g. Setting ulang setelah TCM, line normal, dll">
+        </div>
+      </div>
+    </div>
+
+    <!-- Delivery -->
+    <div class="section">
+      <div class="section-header"><div class="dot dot-green"></div><h2>Delivery Schedule</h2></div>
+      <div class="section-body">
+        <div class="delivery-header">
+          <span>Cycle</span><span>Jam</span><span>Target</span><span>Aktual</span><span></span>
+        </div>
+        <div id="deliveryRows"></div>
+        <div style="margin-top:10px;padding:10px;background:#f8f9fa;border-radius:8px;border:1px solid #e8e8e8;">
+          <div style="font-size:11px;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;">📦 Stock &amp; WIP</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+            <div class="form-group">
+              <label>Stock FG (pcs)</label>
+              <input type="number" id="stockFG" value="25" min="0">
+            </div>
+            <div class="form-group">
+              <label>WIP Machining (pcs)</label>
+              <input type="number" id="wipMachining" value="0" min="0" oninput="calcWIP()">
+            </div>
+            <div class="form-group">
+              <label>WIP Finishing (palet)</label>
+              <input type="number" id="wipFinishingPalet" value="0" min="0" step="0.5" oninput="calcWIP()">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+            <span style="font-size:11px;color:#888;">1 palet = 75 pcs &nbsp;|&nbsp; WIP Finishing =</span>
+            <span id="wipFinishingPcs" style="font-size:13px;font-weight:700;color:#3498db;">0 pcs</span>
+            <span style="font-size:11px;color:#888;">&nbsp;|&nbsp; Total WIP =</span>
+            <span id="wipTotal" style="font-size:13px;font-weight:700;color:#1a1a2e;">0 pcs</span>
+          </div>
+        </div>
+        <button class="btn-add" onclick="addDelivery()">+ Tambah Cycle</button>
+      </div>
+    </div>
+
+    <!-- Pencapaian per jam -->
+    <div class="section">
+      <div class="section-header"><div class="dot dot-amber"></div><h2>Pencapaian Per Jam</h2></div>
+      <div class="section-body">
+        <div class="hourly-header">
+          <span>Jam</span><span>Aktual (pcs)</span><span>Status</span>
+        </div>
+        <div id="hourlyRows"></div>
+        <button class="btn-add" onclick="addHourly()">+ Tambah Jam</button>
+      </div>
+    </div>
+
+    <!-- Reject -->
+    <div class="section">
+      <div class="section-header"><div class="dot dot-red"></div><h2>Data Reject</h2></div>
+      <div class="section-body">
+        <div id="rejectRows"></div>
+        <button class="btn-add" onclick="addReject()">+ Tambah Jenis Reject</button>
+      </div>
+    </div>
+
+    <!-- Masalah / Action -->
+    <div class="section">
+      <div class="section-header"><div class="dot dot-purple"></div><h2>Masalah & Action</h2></div>
+      <div class="section-body">
+        <div id="issueRows"></div>
+        <button class="btn-add" onclick="addIssue()">+ Tambah Masalah</button>
+
+        <div style="margin-top:12px">
+          <label>Rencana Jam Berikutnya</label>
+          <input type="text" id="rencana" placeholder="e.g. Target kejar 16 pcs/jam, cek dies kondisi" style="margin-top:4px">
+        </div>
+        <div style="margin-top:8px">
+          <label>Catatan Tambahan / Eskalasi</label>
+          <input type="text" id="eskalasi" placeholder="e.g. Minta support dari Engineering" style="margin-top:4px">
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right Panel -->
+  <div class="right-panel">
+    <div class="rp-header">
+      <h3>📋 Preview Laporan WA</h3>
+      <button class="btn-generate" onclick="generateReport()">Generate ↻</button>
+    </div>
+
+    <div style="padding:10px 16px; border-bottom:1px solid #e8e8e8; background:#f8f9fa;">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('wa')">Format WA</div>
+        <div class="tab" onclick="switchTab('detail')">Detail Analisa</div>
+      </div>
+    </div>
+
+    <div class="report-preview">
+      <div class="tab-content active" id="tab-wa">
+        <div class="report-text" id="reportWA">Klik "Generate ↻" untuk membuat laporan...</div>
+      </div>
+      <div class="tab-content" id="tab-detail">
+        <div id="detailAnalisa" style="font-size:13px;line-height:1.7;color:#444;">
+          <p style="color:#888;font-size:12px;">Generate laporan terlebih dahulu untuk melihat analisa.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="rp-actions">
+      <button class="btn-copy" onclick="copyReport()">📋 Copy ke Clipboard</button>
+      <button class="btn-clear" onclick="clearReport()">Reset</button>
+      <span class="copy-success" id="copySuccess">✓ Tersalin!</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────
+let deliveries = [
+  { cycle: 'C3', jam: '09:00', target: 30, aktual: 30, done: true },
+  { cycle: 'C4', jam: '12:00', target: 22, aktual: 22, done: true },
+  { cycle: 'C5', jam: '16:00', target: 26, aktual: '', done: false },
+  { cycle: 'C6', jam: '18:00', target: 28, aktual: '', done: false },
+  { cycle: 'C7', jam: '19:00', target: 28, aktual: '', done: false },
+];
+let hourlies = [
+  { jam: '08:00-09:00', aktual: 5, note: 'setting after tcm' },
+  { jam: '09:00-10:00', aktual: 8, note: '' },
+  { jam: '10:00-11:00', aktual: 16, note: '' },
+  { jam: '11:00-12:00', aktual: 14, note: '' },
+];
+let rejects = [
+  { proses: 'Casting', jenis: 'Holes / Porositas', qty: 3 },
+  { proses: 'Machining', jenis: '', qty: 0 },
+];
+let issues = [
+  { masalah: 'Line stop awal shift - setting ulang setelah TCM', action: 'Monitor', status: 'On Going' },
+];
+
+// ── WIP Calc ──────────────────────────────────────
+function calcWIP() {
+  const mach = parseInt(document.getElementById('wipMachining').value) || 0;
+  const palet = parseFloat(document.getElementById('wipFinishingPalet').value) || 0;
+  const finPcs = Math.round(palet * 75);
+  const total = mach + finPcs;
+  document.getElementById('wipFinishingPcs').textContent = finPcs + ' pcs';
+  document.getElementById('wipTotal').textContent = total + ' pcs';
+}
+
+// ── Init ──────────────────────────────────────
+window.onload = () => {
+  const today = new Date();
+  const saved = localStorage.getItem('fw04_draft');
+  if (saved) {
+    try {
+      loadState(JSON.parse(saved));
+      showStatus('✓ Data tersimpan dimuat', '#27ae60');
+    } catch(e) {
+      document.getElementById('tgl').value = today.toISOString().slice(0, 10);
+    }
+  } else {
+    document.getElementById('tgl').value = today.toISOString().slice(0, 10);
+  }
+  renderAll();
+  calcWIP();
+};
+
+// ── Save / Load ──────────────────────────────────────
+function getState() {
+  return {
+    tgl: document.getElementById('tgl').value,
+    shift: document.getElementById('shift').value,
+    linename: document.getElementById('linename').value,
+    partno: document.getElementById('partno').value,
+    target: document.getElementById('target').value,
+    operator: document.getElementById('operator').value,
+    mesin: document.getElementById('mesin').value,
+    kondisi: document.getElementById('kondisi').value,
+    stockFG: document.getElementById('stockFG').value,
+    wipMachining: document.getElementById('wipMachining').value,
+    wipFinishingPalet: document.getElementById('wipFinishingPalet').value,
+    rencana: document.getElementById('rencana').value,
+    eskalasi: document.getElementById('eskalasi').value,
+    deliveries, hourlies, rejects, issues,
+    savedAt: new Date().toLocaleString('id-ID')
+  };
+}
+
+function loadState(s) {
+  if (s.tgl) document.getElementById('tgl').value = s.tgl;
+  if (s.shift) document.getElementById('shift').value = s.shift;
+  if (s.linename) document.getElementById('linename').value = s.linename;
+  if (s.partno) document.getElementById('partno').value = s.partno;
+  if (s.target) document.getElementById('target').value = s.target;
+  if (s.operator) document.getElementById('operator').value = s.operator;
+  if (s.mesin) document.getElementById('mesin').value = s.mesin;
+  if (s.kondisi) document.getElementById('kondisi').value = s.kondisi;
+  if (s.stockFG) document.getElementById('stockFG').value = s.stockFG;
+  if (s.wipMachining !== undefined) document.getElementById('wipMachining').value = s.wipMachining;
+  if (s.wipFinishingPalet !== undefined) document.getElementById('wipFinishingPalet').value = s.wipFinishingPalet;
+  if (s.rencana) document.getElementById('rencana').value = s.rencana;
+  if (s.eskalasi) document.getElementById('eskalasi').value = s.eskalasi;
+  if (s.deliveries) deliveries = s.deliveries;
+  if (s.hourlies) hourlies = s.hourlies;
+  if (s.rejects) rejects = s.rejects;
+  if (s.issues) issues = s.issues;
+  if (s.savedAt) document.getElementById('lastSaved').textContent = 'Terakhir disimpan: ' + s.savedAt;
+}
+
+function saveLocal() {
+  const state = getState();
+  localStorage.setItem('fw04_draft', JSON.stringify(state));
+  document.getElementById('lastSaved').textContent = 'Terakhir disimpan: ' + state.savedAt;
+  showStatus('✓ Tersimpan di browser', '#27ae60');
+}
+
+function exportJSON() {
+  const state = getState();
+  const tgl = state.tgl || 'nodate';
+  const shift = (state.shift || 'S1').replace(' ', '');
+  const fname = `FW04_${tgl}_${shift}.json`;
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fname;
+  a.click();
+  showStatus('✓ File ' + fname + ' didownload', '#2980b9');
+}
+
+function importJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const state = JSON.parse(e.target.result);
+      loadState(state);
+      renderAll();
+      calcWIP();
+      showStatus('✓ Data dari ' + file.name + ' dimuat', '#8e44ad');
+    } catch(err) {
+      showStatus('✗ File tidak valid', '#e74c3c');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function newShift() {
+  if (!confirm('Reset semua data untuk shift baru? Data saat ini akan hilang dari form (localStorage tetap ada sampai Simpan ulang).')) return;
+  deliveries = [];
+  hourlies = [];
+  rejects = [{ proses: 'Casting', jenis: '', qty: 0 }, { proses: 'Machining', jenis: '', qty: 0 }];
+  issues = [];
+  document.getElementById('tgl').value = new Date().toISOString().slice(0, 10);
+  ['stockFG','wipMachining','wipFinishingPalet'].forEach(id => document.getElementById(id).value = 0);
+  ['operator','mesin','kondisi','rencana','eskalasi'].forEach(id => document.getElementById(id).value = '');
+  renderAll(); calcWIP();
+  showStatus('Form direset untuk shift baru', '#e67e22');
+}
+
+function showStatus(msg, color) {
+  const el = document.getElementById('saveStatus');
+  el.textContent = msg;
+  el.style.color = color;
+  setTimeout(() => el.textContent = '', 3000);
+}
+
+// Auto-save setiap 60 detik
+setInterval(() => {
+  localStorage.setItem('fw04_draft', JSON.stringify(getState()));
+  document.getElementById('lastSaved').textContent = 'Auto-saved: ' + new Date().toLocaleTimeString('id-ID');
+}, 60000);
+
+function renderAll() {
+  renderDelivery();
+  renderHourly();
+  renderReject();
+  renderIssues();
+  updateLiveSummary();
+}
+
+// ── Delivery ──────────────────────────────────
+function renderDelivery() {
+  const cont = document.getElementById('deliveryRows');
+  cont.innerHTML = '';
+  deliveries.forEach((d, i) => {
+    const row = document.createElement('div');
+    row.className = 'delivery-row';
+    const tgt = d.target || 0;
+    const akt = d.aktual !== '' ? parseInt(d.aktual) : '';
+    const pct = tgt && akt !== '' ? Math.round((akt / tgt) * 100) : null;
+    row.innerHTML = `
+      <input type="text" value="${d.cycle}" placeholder="C3" oninput="deliveries[${i}].cycle=this.value;updateLiveSummary()">
+      <input type="time" value="${d.jam}" oninput="deliveries[${i}].jam=this.value">
+      <input type="number" value="${d.target}" placeholder="30" oninput="deliveries[${i}].target=parseInt(this.value)||0;updateLiveSummary()">
+      <input type="number" value="${d.aktual}" placeholder="-" oninput="deliveries[${i}].aktual=this.value;updateLiveSummary()">
+      <button class="btn-remove" onclick="removeDelivery(${i})">✕</button>
+    `;
+    cont.appendChild(row);
+  });
+}
+
+function addDelivery() {
+  const n = deliveries.length + 1;
+  deliveries.push({ cycle: `C${n+2}`, jam: '', target: 0, aktual: '', done: false });
+  renderDelivery();
+}
+function removeDelivery(i) { deliveries.splice(i, 1); renderDelivery(); }
+
+// ── Hourly ──────────────────────────────────────
+function renderHourly() {
+  const cont = document.getElementById('hourlyRows');
+  cont.innerHTML = '';
+  const target = parseInt(document.getElementById('target').value) || 15;
+  hourlies.forEach((h, i) => {
+    const akt = parseInt(h.aktual) || 0;
+    const pct = Math.round((akt / target) * 100);
+    let cls = pct >= 100 ? 'green' : pct >= 80 ? 'amber' : 'red';
+    let badge = pct >= 100 ? '✅ ON' : pct >= 80 ? '⚠️ -' + (target - akt) : '🔴 -' + (target - akt);
+    const row = document.createElement('div');
+    row.style.marginBottom = '8px';
+    row.innerHTML = `
+      <div class="hourly-row">
+        <input type="text" value="${h.jam}" placeholder="08:00-09:00" oninput="hourlies[${i}].jam=this.value">
+        <input type="number" value="${h.aktual}" placeholder="0" oninput="hourlies[${i}].aktual=this.value;renderHourly();updateLiveSummary()">
+        <span class="badge badge-${cls === 'green' ? 'ok' : cls === 'amber' ? 'warn' : 'danger'}" style="font-size:10px">${badge}</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:-2px">
+        <div class="progress-bar-wrap" style="flex:1"><div class="progress-bar ${cls}" style="width:${Math.min(pct,100)}%"></div></div>
+        <span style="font-size:10px;color:#888;min-width:30px">${pct}%</span>
+        <input type="text" value="${h.note}" placeholder="catatan..." oninput="hourlies[${i}].note=this.value" style="font-size:11px;padding:3px 6px;width:130px">
+        <button class="btn-remove" onclick="removeHourly(${i})" style="flex-shrink:0">✕</button>
+      </div>
+    `;
+    cont.appendChild(row);
+  });
+}
+
+function addHourly() {
+  const last = hourlies[hourlies.length - 1];
+  let nextSlot = '';
+  if (last) {
+    const parts = last.jam.split('-');
+    if (parts.length === 2) {
+      const end = parts[1].trim();
+      const [h, m] = end.split(':').map(Number);
+      const nh = (h + 1) % 24;
+      nextSlot = `${String(nh).padStart(2,'0')}:${String(m).padStart(2,'0')}-${String(nh+1).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    }
+  }
+  hourlies.push({ jam: nextSlot, aktual: '', note: '' });
+  renderHourly();
+}
+function removeHourly(i) { hourlies.splice(i, 1); renderHourly(); updateLiveSummary(); }
+
+// ── Reject ──────────────────────────────────────
+function renderReject() {
+  const cont = document.getElementById('rejectRows');
+  cont.innerHTML = '';
+  rejects.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:100px 1fr 70px 32px;gap:6px;margin-bottom:6px;align-items:center';
+    row.innerHTML = `
+      <input type="text" value="${r.proses}" placeholder="Proses" oninput="rejects[${i}].proses=this.value;updateLiveSummary()">
+      <input type="text" value="${r.jenis}" placeholder="Jenis defect / kode" oninput="rejects[${i}].jenis=this.value">
+      <input type="number" value="${r.qty}" placeholder="0" min="0" oninput="rejects[${i}].qty=parseInt(this.value)||0;updateLiveSummary()">
+      <button class="btn-remove" onclick="removeReject(${i})">✕</button>
+    `;
+    cont.appendChild(row);
+  });
+  const hdr = `<div style="display:grid;grid-template-columns:100px 1fr 70px 32px;gap:6px;margin-bottom:4px">
+    <span style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase">Proses</span>
+    <span style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase">Jenis Defect</span>
+    <span style="font-size:10px;font-weight:700;color:#999;text-transform:uppercase">Qty</span>
+    <span></span></div>`;
+  cont.insertAdjacentHTML('afterbegin', hdr);
+}
+
+function addReject() { rejects.push({ proses: '', jenis: '', qty: 0 }); renderReject(); }
+function removeReject(i) { rejects.splice(i, 1); renderReject(); updateLiveSummary(); }
+
+// ── Issues ──────────────────────────────────────
+function renderIssues() {
+  const cont = document.getElementById('issueRows');
+  cont.innerHTML = '';
+  issues.forEach((iss, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'border:1px solid #e8e8e8;border-radius:6px;padding:8px 10px;margin-bottom:8px;background:#fafafa';
+    row.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 90px 32px;gap:6px;margin-bottom:6px;align-items:center">
+        <input type="text" value="${iss.masalah}" placeholder="Deskripsi masalah..." oninput="issues[${i}].masalah=this.value">
+        <select oninput="issues[${i}].status=this.value" style="font-size:12px">
+          <option ${iss.status==='On Going'?'selected':''}>On Going</option>
+          <option ${iss.status==='Solved'?'selected':''}>Solved</option>
+          <option ${iss.status==='Eskalasi'?'selected':''}>Eskalasi</option>
+        </select>
+        <button class="btn-remove" onclick="removeIssue(${i})">✕</button>
+      </div>
+      <input type="text" value="${iss.action}" placeholder="Action yang diambil..." oninput="issues[${i}].action=this.value" style="font-size:12px">
+    `;
+    cont.appendChild(row);
+  });
+}
+
+function addIssue() { issues.push({ masalah: '', action: '', status: 'On Going' }); renderIssues(); }
+function removeIssue(i) { issues.splice(i, 1); renderIssues(); }
+
+// ── Live Summary ──────────────────────────────────────
+function updateLiveSummary() {
+  const target = parseInt(document.getElementById('target')?.value) || 15;
+  const totalAch = hourlies.reduce((s, h) => s + (parseInt(h.aktual) || 0), 0);
+  const totalHours = hourlies.length || 1;
+  const rate = (totalAch / totalHours).toFixed(1);
+  const totalReject = rejects.reduce((s, r) => s + (parseInt(r.qty) || 0), 0);
+
+  document.getElementById('summAch').textContent = totalAch;
+  document.getElementById('summRate').textContent = rate;
+  document.getElementById('summReject').textContent = totalReject;
+
+  const rateNum = parseFloat(rate);
+  const cardRate = document.getElementById('cardRate');
+  cardRate.className = 'stat-card';
+  if (rateNum >= target) cardRate.classList.add('green');
+  else if (rateNum >= target * 0.8) cardRate.classList.add('amber');
+  else cardRate.classList.add('red');
+}
+
+// ── Generate ──────────────────────────────────────
+function generateReport() {
+  const tgl = document.getElementById('tgl').value;
+  const shift = document.getElementById('shift').value;
+  const linename = document.getElementById('linename').value || 'FW-04';
+  const partno = document.getElementById('partno').value || 'FW D13E';
+  const target = parseInt(document.getElementById('target').value) || 15;
+  const operator = document.getElementById('operator').value;
+  const mesin = document.getElementById('mesin').value || '';
+  const kondisi = document.getElementById('kondisi').value;
+  const stockFG = document.getElementById('stockFG').value || '0';
+  const wipMach = parseInt(document.getElementById('wipMachining').value) || 0;
+  const wipPalet = parseFloat(document.getElementById('wipFinishingPalet').value) || 0;
+  const wipFinPcs = Math.round(wipPalet * 75);
+  const wipTotal = wipMach + wipFinPcs;
+  const rencana = document.getElementById('rencana').value;
+  const eskalasi = document.getElementById('eskalasi').value;
+
+  const now = new Date();
+  const timeNow = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  const tglFmt = tgl ? new Date(tgl + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) : '-';
+
+  const totalAch = hourlies.reduce((s, h) => s + (parseInt(h.aktual) || 0), 0);
+  const totalHours = hourlies.length || 1;
+  const avgRate = (totalAch / totalHours).toFixed(1);
+  const totalReject = rejects.reduce((s, r) => s + (parseInt(r.qty) || 0), 0);
+  const delivDone = deliveries.filter(d => d.aktual !== '' && parseInt(d.aktual) > 0).length;
+  const delivTotal = deliveries.length;
+  const gap = totalAch - (target * totalHours);
+  const gapStr = gap >= 0 ? `+${gap}` : `${gap}`;
+
+  // Delivery block
+  let delivBlock = '';
+  deliveries.forEach(d => {
+    const akt = d.aktual !== '' ? d.aktual : '⏳';
+    const done = d.aktual !== '' && parseInt(d.aktual) > 0;
+    const status = done ? '✅' : '⬜';
+    delivBlock += `   ${status} ${d.cycle} (${d.jam}) : ${akt}/${d.target} pcs\n`;
+  });
+
+  // Hourly block
+  let hourlyBlock = '';
+  hourlies.forEach(h => {
+    const akt = parseInt(h.aktual) || 0;
+    const pct = Math.round((akt / target) * 100);
+    const bar = pct >= 100 ? '🟢' : pct >= 80 ? '🟡' : '🔴';
+    const note = h.note ? ` ← ${h.note}` : '';
+    hourlyBlock += `   ${bar} ${h.jam} : ${akt} pcs${note}\n`;
+  });
+
+  // Reject block
+  let rejectBlock = '';
+  rejects.forEach(r => {
+    const icon = r.qty > 0 ? '❗' : '✅';
+    const jenis = r.jenis ? ` (${r.jenis})` : '';
+    rejectBlock += `   ${icon} ${r.proses}${jenis} : ${r.qty} pcs\n`;
+  });
+
+  // Issues block
+  let issueBlock = '';
+  issues.forEach(iss => {
+    if (!iss.masalah) return;
+    const icon = iss.status === 'Solved' ? '✅' : iss.status === 'Eskalasi' ? '🚨' : '⚠️';
+    issueBlock += `   ${icon} ${iss.masalah}\n      → ${iss.action || '-'} [${iss.status}]\n`;
+  });
+
+  const achievement = parseFloat(avgRate) >= target ? '✅ ON TRACK' : parseFloat(avgRate) >= target * 0.8 ? '⚠️ BELOW TARGET' : '🔴 CRITICAL';
+
+  let report = `━━━━━━━━━━━━━━━━━━━━━━
+📊 LAPORAN PRODUKSI — KRITIS
+━━━━━━━━━━━━━━━━━━━━━━
+🏭 Line    : ${linename}
+📌 Part    : ${partno}
+📅 Tanggal : ${tglFmt}
+🕐 Waktu   : ${timeNow} | ${shift}`;
+  if (operator) report += `\n👤 Operator : ${operator}`;
+  if (mesin) report += `\n⚙️ Mesin   : ${mesin}`;
+  if (kondisi) report += `\n📝 Kondisi : ${kondisi}`;
+  report += `
+
+🚚 DELIVERY STATUS (${delivDone}/${delivTotal} cycle)
+${delivBlock}`;
+  report += `
+📦 Stock FG      : ${stockFG} pcs
+📋 WIP Machining : ${wipMach} pcs
+📋 WIP Finishing : ${wipPalet} palet (${wipFinPcs} pcs)
+📦 Total WIP     : ${wipTotal} pcs
+
+📈 PENCAPAIAN JAM (Target: ${target} pcs/jam)
+${hourlyBlock}
+   ──────────────────
+   📊 Total    : ${totalAch} pcs / ${totalHours} jam
+   ⚡ Avg Rate : ${avgRate} pcs/jam
+   📉 Gap      : ${gapStr} pcs
+   ${achievement}
+`;
+
+  report += `
+🔍 DATA REJECT (Total: ${totalReject} pcs)
+${rejectBlock || '   ✅ Tidak ada reject\n'}`;
+
+  if (issueBlock) {
+    report += `
+⚠️ MASALAH & ACTION
+${issueBlock}`;
+  }
+
+  if (rencana) {
+    report += `
+🎯 RENCANA JAM BERIKUTNYA
+   ${rencana}
+`;
+  }
+  if (eskalasi) {
+    report += `
+🚨 ESKALASI
+   ${eskalasi}
+`;
+  }
+
+  report += `
+━━━━━━━━━━━━━━━━━━━━━━
+📱 Laporan dibuat: ${timeNow}
+━━━━━━━━━━━━━━━━━━━━━━`;
+
+  document.getElementById('reportWA').textContent = report;
+
+  // Detail Analisa
+  buildAnalisa(totalAch, totalHours, avgRate, target, totalReject, gap);
+}
+
+function buildAnalisa(totalAch, totalHours, avgRate, target, totalReject, gap) {
+  const oee = Math.min(100, Math.round((parseFloat(avgRate) / target) * 100));
+  let html = `<div style="margin-bottom:12px">`;
+  html += `<div style="font-weight:600;font-size:13px;color:#1a1a2e;margin-bottom:8px">Ringkasan Performa</div>`;
+
+  html += `<div class="mini-stat"><span>Achievement Rate</span><span><b>${avgRate}</b> / ${target} pcs/jam</span></div>`;
+  html += `<div class="mini-stat"><span>Attainment %</span><span class="badge ${oee >= 100 ? 'badge-ok' : oee >= 80 ? 'badge-warn' : 'badge-danger'}">${oee}%</span></div>`;
+  html += `<div class="mini-stat"><span>Gap vs Target</span><span style="color:${gap >= 0 ? '#27ae60' : '#c0392b'};font-weight:600">${gap >= 0 ? '+' + gap : gap} pcs</span></div>`;
+  html += `<div class="mini-stat"><span>Total Reject</span><span class="badge ${totalReject === 0 ? 'badge-ok' : totalReject <= 5 ? 'badge-warn' : 'badge-danger'}">${totalReject} pcs</span></div>`;
+
+  // Proyeksi
+  const jamSisa = 8 - totalHours;
+  const proyeksiTotal = totalAch + (parseFloat(avgRate) * jamSisa);
+  const targetShift = target * 8;
+  html += `<div class="mini-stat"><span>Proyeksi End Shift</span><span><b>${Math.round(proyeksiTotal)}</b> / ${targetShift} pcs</span></div>`;
+
+  html += `</div>`;
+
+  // Trend per jam
+  html += `<div style="font-weight:600;font-size:13px;color:#1a1a2e;margin:12px 0 8px">Trend Pencapaian</div>`;
+  hourlies.forEach(h => {
+    const akt = parseInt(h.aktual) || 0;
+    const pct = Math.min(100, Math.round((akt / target) * 100));
+    const barColor = pct >= 100 ? '#2ecc71' : pct >= 80 ? '#f39c12' : '#e74c3c';
+    html += `<div style="margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#666;margin-bottom:2px">
+        <span>${h.jam}</span><span>${akt} pcs (${pct}%)</span>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar" style="width:${pct}%;background:${barColor}"></div></div>
+    </div>`;
+  });
+
+  // Saran SPV
+  html += `<div style="font-weight:600;font-size:13px;color:#1a1a2e;margin:14px 0 8px">💡 Rekomendasi SPV</div>`;
+  const recs = [];
+  if (parseFloat(avgRate) < target * 0.9) recs.push('⚡ Rate di bawah target >10% — investigasi bottleneck & pastikan tidak ada micro-stop tersembunyi');
+  if (totalReject > 5) recs.push('🔍 Reject tinggi — stop & analisa root cause, pertimbangkan quality gate tambahan');
+  if (hourlies.some(h => parseInt(h.aktual || 0) < target * 0.7)) recs.push('📉 Ada jam dengan pencapaian sangat rendah (<70%) — evaluasi kondisi mesin jam tersebut');
+  const delivDone = deliveries.filter(d => d.aktual !== '' && parseInt(d.aktual) > 0).length;
+  if (delivDone < deliveries.length * 0.5) recs.push('🚚 Delivery cycle banyak yang belum terpenuhi — koordinasi dengan PPIC/logistik segera');
+  if (recs.length === 0) recs.push('✅ Performa dalam kondisi baik — pertahankan konsistensi dan monitor reject');
+  recs.push('📊 Pastikan data setiap jam diisi tepat waktu untuk akurasi laporan end-shift');
+  recs.push('🤝 Koordinasi dengan engineering jika ada gejala penurunan rate 2 jam berturut-turut');
+
+  recs.forEach(r => {
+    html += `<div style="font-size:12px;padding:5px 8px;background:#f8f9fa;border-radius:6px;margin-bottom:5px;border-left:3px solid #3498db">${r}</div>`;
+  });
+
+  document.getElementById('detailAnalisa').innerHTML = html;
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', (i === 0 && name === 'wa') || (i === 1 && name === 'detail')));
+  document.getElementById('tab-wa').classList.toggle('active', name === 'wa');
+  document.getElementById('tab-detail').classList.toggle('active', name === 'detail');
+}
+
+function copyReport() {
+  const text = document.getElementById('reportWA').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const el = document.getElementById('copySuccess');
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2000);
+  });
+}
+
+function clearReport() {
+  document.getElementById('reportWA').textContent = 'Klik "Generate ↻" untuk membuat laporan...';
+  document.getElementById('detailAnalisa').innerHTML = '<p style="color:#888;font-size:12px;">Generate laporan terlebih dahulu untuk melihat analisa.</p>';
+}
+
+// Target change rerender
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'target') { renderHourly(); updateLiveSummary(); }
+});
+
+renderAll();
+</script>
+</body>
+</html>
